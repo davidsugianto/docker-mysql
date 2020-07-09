@@ -1,0 +1,10 @@
+data/mysql-backup/*
+!data/mysql-backup/.keepfile
+data/mysql-master/*
+!data/mysql-master/.keepfile
+data/mysql-slave/*
+!data/mysql-slave/.keepfile
+logs/mysql-master/*
+!logs/mysql-master/.keepfile
+logs/mysql-slave/*
+!logs/mysql-slave/.keepfile

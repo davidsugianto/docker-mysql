@@ -1,0 +1,82 @@
+version: '3.5'
+
+networks:
+  app-tier:
+    driver: bridge
+
+services:
+  mysql-master:
+    container_name: mysql-master
+    image: bitnami/mysql:${MYSQL_VERSION}-${MYSQL_OS_VERSION}
+    restart: always
+    environment:
+      - 'TZ=${TIMEZONE}'
+      - 'MYSQL_REPLICATION_MODE=master'
+      - 'MYSQL_REPLICATION_USER=${MYSQL_REPLICATION_USER}'
+      - 'MYSQL_REPLICATION_PASSWORD=${MYSQL_REPLICATION_PASSWORD}'
+      - 'MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}'
+      - 'MYSQL_USER=${MYSQL_USER}'
+      - 'MYSQL_PASSWORD=${MYSQL_PASSWORD}'
+      - 'MYSQL_MULTIPLE_DATABASE=${MYSQL_MULTIPLE_DATABASE}'
+      - 'MYSQL_STAGING_DATABASE=${MYSQL_STAGING_DATABASE}'
+      - 'MYSQL_PRODUCTION_DATABASE=${MYSQL_PRODUCTION_DATABASE}'
+      - 'ALLOW_EMPTY_PASSWORD=no'
+    networks:
+      - app-tier
+    expose:
+      - '${MYSQL_PORT}'
+    ports: 
+      - "${MYSQL_MASTER_PORT}:${MYSQL_PORT}"
+    volumes:
+      - ./config/mysql/custom.cnf:/opt/bitnami/mysql/conf/my_custom.cnf:ro
+      - ./data/mysql-master/${MYSQL_VERSION}:/bitnami/mysql/data
+      - ./data/mysql-backup/${MYSQL_VERSION}-staging:/home/mysql/staging
+      - ./data/mysql-backup/${MYSQL_VERSION}-production:/home/mysql/production
+      - ./logs/mysql-master/${MYSQL_VERSION}:/opt/bitnami/mysql/logs
+      - ./scripts/mysql:/docker-entrypoint-initdb.d:ro
+
+  mysql-slave:
+    container_name: mysql-slave
+    image: bitnami/mysql:${MYSQL_VERSION}-${MYSQL_OS_VERSION}
+    restart: always
+    environment:
+      - 'TZ=${TIMEZONE}'
+      - 'MYSQL_REPLICATION_MODE=slave'
+      - 'MYSQL_MASTER_HOST=mysql-master'
+      - 'MYSQL_REPLICATION_USER=${MYSQL_REPLICATION_USER}'
+      - 'MYSQL_REPLICATION_PASSWORD=${MYSQL_REPLICATION_PASSWORD}'
+      - 'MYSQL_MASTER_PORT_NUMBER=${MYSQL_MASTER_PORT}'
+      - 'MYSQL_MASTER_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}'
+      - 'ALLOW_EMPTY_PASSWORD=no'
+    networks:
+      - app-tier
+    depends_on: 
+      - mysql-master
+    expose:
+      - '${MYSQL_PORT}'
+    ports: 
+      - "${MYSQL_SLAVE_PORT}:${MYSQL_PORT}"
+    volumes:
+      - ./data/mysql-slave/${MYSQL_VERSION}:/bitnami/mysql/data
+      - ./logs/mysql-slave/${MYSQL_VERSION}:/opt/bitnami/mysql/logs
+
+  mysql-backup:
+    container_name: mysql-backup
+    build: 
+      context: ./scripts/mysql-backup
+      args: 
+        - MYSQL_USER=${MYSQL_USER}
+        - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+        - MYSQL_HOST=${MYSQL_HOST}
+        - MYSQL_STAGING_DATABASE=${MYSQL_STAGING_DATABASE}
+        - MYSQL_PRODUCTION_DATABASE=${MYSQL_PRODUCTION_DATABASE}
+    restart: unless-stopped 
+    environment:
+      - 'TZ=${TIMEZONE}'
+    networks:
+      - app-tier
+    depends_on: 
+      - mysql-master
+    volumes:
+      - ./data/mysql-backup/${MYSQL_VERSION}-staging:/backups/staging
+      - ./data/mysql-backup/${MYSQL_VERSION}-production:/backups/production
