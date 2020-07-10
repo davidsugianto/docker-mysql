@@ -64,12 +64,6 @@ services:
     container_name: mysql-backup
     build: 
       context: ./scripts/mysql-backup
-      args: 
-        - MYSQL_USER=${MYSQL_USER}
-        - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-        - MYSQL_HOST=${MYSQL_HOST}
-        - MYSQL_STAGING_DATABASE=${MYSQL_STAGING_DATABASE}
-        - MYSQL_PRODUCTION_DATABASE=${MYSQL_PRODUCTION_DATABASE}
     restart: unless-stopped 
     environment:
       - 'TZ=${TIMEZONE}'
